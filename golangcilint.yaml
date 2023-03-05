@@ -32,6 +32,8 @@ linters-settings:
       - w *os.File
       - to int64
       - l *ldap.Conn
+      - w http.ResponseWriter
+      - r *http.Request
   gci:
     sections:
       - standard
@@ -47,3 +49,14 @@ linters-settings:
       mnd:
         checks: argument,case,condition,operation,return,assign
         ignored-numbers: 10,64
+  gomoddirectives:
+    replace-allow-list:
+      - helm.sh/helm/v3
+      - github.com/opencontainers/umoci
+issues:
+  exclude-rules:
+    - path: pkg/extensions/search/schema.resolvers.go
+      linters:
+        - lll
+        - varnamelen
+        - gci
