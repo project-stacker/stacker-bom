@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"stackerbuild.io/sbom/pkg/distro"
+	"stackerbuild.io/sbom/pkg/fs"
 )
 
 //nolint:gochecknoglobals
@@ -46,19 +47,30 @@ func GenerateCmd() *cobra.Command {
 
 func BuildCmd() *cobra.Command {
 	input := ""
+	output := ""
+	pkgname := ""
+	pkgversion := ""
+
 	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "build",
 		Long:  "build",
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := fs.ParsePackage(input, Author, Organization, License, pkgname, pkgversion); err != nil {
+				log.Error().Err(err).Msg("generate failed")
+				os.Exit(1)
+			}
 		},
 	}
 
 	cmd.Flags().StringVarP(&input, "input", "i", "", "input file")
 	_ = cmd.MarkFlagRequired("input")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "output file")
 	cmd.Flags().StringVarP(&Author, "author", "", "", "set author of this SBOM document")
 	cmd.Flags().StringVarP(&Organization, "organization", "", "", "set organization of this SBOM document")
 	cmd.Flags().StringVarP(&License, "license", "", "", "set license of this SBOM document")
+	cmd.Flags().StringVarP(&pkgname, "pkgname", "", "", "set package name of this SBOM document")
+	cmd.Flags().StringVarP(&pkgversion, "pkgversion", "", "", "set package version of this SBOM document")
 
 	return cmd
 }
