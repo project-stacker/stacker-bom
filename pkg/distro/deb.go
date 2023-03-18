@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"pault.ag/go/debian/deb"
 	k8spdx "sigs.k8s.io/bom/pkg/spdx"
+	"stackerbuild.io/sbom/pkg/build"
 )
 
 func ParsePackage(path, author, organization, license string) error {
@@ -28,6 +29,7 @@ func ParsePackage(path, author, organization, license string) error {
 	kdoc.Creator.Person = author
 	kdoc.Creator.Organization = organization
 	kdoc.Creator.Tool = []string{"stackerbuild.io/sbom"}
+	kdoc.Creator.Tool = []string{fmt.Sprintf("stackerbuild.io/sbom@%s", build.Commit)}
 
 	pkg := &k8spdx.Package{
 		Entity: k8spdx.Entity{

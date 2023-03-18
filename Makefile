@@ -1,3 +1,7 @@
+COMMIT_HASH=$(shell git describe --always --tags --long)
+RELEASE_TAG=$(shell git describe --tags --abbrev=0)
+COMMIT ?= $(if $(shell git status --porcelain --untracked-files=no),$(COMMIT_HASH)-dirty,$(COMMIT_HASH))
+
 BINDIR=bin
 TOOLSDIR := $(shell pwd)/hack/tools
 GOLINTER := $(TOOLSDIR)/bin/golangci-lint
@@ -14,7 +18,7 @@ $(GOLINTER):
 .PHONY: binary
 binary:
 	mkdir -p ${BINDIR}
-	go build -v -o ${BINDIR}/sbom ./cmd/sbom/...
+	go build -v -trimpath -ldflags "-X stackerbuild.io/sbom/pkg/build.ReleaseTag=${RELEASE_TAG} -X stackerbuild.io/sbom/pkg/build.Commit=${COMMIT} -s -w" -o ${BINDIR}/sbom ./cmd/sbom/...
 
 .PHONY: lint
 lint: ./golangcilint.yaml $(GOLINTER)
@@ -23,3 +27,8 @@ lint: ./golangcilint.yaml $(GOLINTER)
 .PHONY: test
 test:
 	go test -v -race -cover -coverpkg=./...
+
+.PHONY: clean
+clean:
+	rm -rf ${BINDIR}
+	rm -rf ${TOOLSDIR}

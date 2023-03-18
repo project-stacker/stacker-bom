@@ -2,6 +2,7 @@ package fs
 
 import (
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,8 @@ import (
 	"github.com/minio/sha256-simd"
 	"github.com/rs/zerolog/log"
 	k8spdx "sigs.k8s.io/bom/pkg/spdx"
+	"stackerbuild.io/sbom/pkg/build"
+	"stackerbuild.io/sbom/pkg/errors"
 )
 
 func ParsePackage(path, author, organization, license, pkgname, pkgversion string) error {
@@ -21,7 +24,7 @@ func ParsePackage(path, author, organization, license, pkgname, pkgversion strin
 	kdoc := k8spdx.NewDocument()
 	kdoc.Creator.Person = author
 	kdoc.Creator.Organization = organization
-	kdoc.Creator.Tool = []string{"stackerbuild.io/sbom"}
+	kdoc.Creator.Tool = []string{fmt.Sprintf("stackerbuild.io/sbom@%s", build.Commit)}
 
 	pkg := &k8spdx.Package{
 		Entity: k8spdx.Entity{
@@ -65,12 +68,13 @@ func ParsePackage(path, author, organization, license, pkgname, pkgversion strin
 
 		cksum := shaWriter.Sum(nil)
 
-		file := &k8spdx.File{
-			Entity: k8spdx.Entity{
+		file := k8spdx.NewFile()
+		file.SetEntity(
+			&k8spdx.Entity{
 				Name:     path,
 				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
 			},
-		}
+		)
 		if err := pkg.AddFile(file); err != nil {
 			log.Error().Err(err).Msg("unable to add file to package")
 
@@ -90,6 +94,37 @@ func ParsePackage(path, author, organization, license, pkgname, pkgversion strin
 		log.Error().Err(err).Str("path", spdxfile).Msg("unable to write output")
 
 		return err
+	}
+
+	return nil
+}
+
+func Verify(path string) error {
+	kdoc, err := k8spdx.OpenDoc(path)
+	if err != nil {
+		log.Error().Err(err).Str("path", path).Msg("unable to open SBOM")
+
+		return err
+	}
+
+	if kdoc == nil {
+		log.Error().Str("path", path).Msg("invalid SBOM document")
+
+		return fmt.Errorf("%s: %w", path, errors.ErrInvalidDoc)
+	}
+
+	for _, pkg := range kdoc.Packages {
+		for _, file := range pkg.Files() {
+			file.Entity.Opts = &k8spdx.ObjectOptions{}
+
+			log.Info().Str("path", file.FileName).Msg("file entity")
+
+			if err := file.ReadSourceFile(file.FileName); err != nil {
+				log.Error().Err(err).Str("path", file.FileName).Msg("doesn't match entry in SBOM document")
+
+				return err
+			}
+		}
 	}
 
 	return nil
