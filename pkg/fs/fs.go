@@ -14,9 +14,9 @@ import (
 	"stackerbuild.io/sbom/pkg/errors"
 )
 
-func ParsePackage(path, author, organization, license, pkgname, pkgversion string) error {
-	if _, err := os.Lstat(path); err != nil {
-		log.Error().Err(err).Str("path", path).Msg("unable to find path")
+func ParsePackage(input, output, author, organization, license, pkgname, pkgversion string) error {
+	if _, err := os.Lstat(input); err != nil {
+		log.Error().Err(err).Str("path", input).Msg("unable to find path")
 
 		return err
 	}
@@ -46,7 +46,7 @@ func ParsePackage(path, author, organization, license, pkgname, pkgversion strin
 		return err
 	}
 
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(input, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -84,14 +84,13 @@ func ParsePackage(path, author, organization, license, pkgname, pkgversion strin
 		return nil
 	})
 	if err != nil {
-		log.Error().Err(err).Str("path", path).Msg("unable to walk dir")
+		log.Error().Err(err).Str("path", input).Msg("unable to walk dir")
 
 		return err
 	}
 
-	spdxfile := path + ".k8s.spdx"
-	if err := kdoc.Write(spdxfile); err != nil {
-		log.Error().Err(err).Str("path", spdxfile).Msg("unable to write output")
+	if err := kdoc.Write(output); err != nil {
+		log.Error().Err(err).Str("path", output).Msg("unable to write output")
 
 		return err
 	}
@@ -99,18 +98,18 @@ func ParsePackage(path, author, organization, license, pkgname, pkgversion strin
 	return nil
 }
 
-func Verify(path string) error {
-	kdoc, err := k8spdx.OpenDoc(path)
+func Verify(input string) error {
+	kdoc, err := k8spdx.OpenDoc(input)
 	if err != nil {
-		log.Error().Err(err).Str("path", path).Msg("unable to open SBOM")
+		log.Error().Err(err).Str("path", input).Msg("unable to open SBOM")
 
 		return err
 	}
 
 	if kdoc == nil {
-		log.Error().Str("path", path).Msg("invalid SBOM document")
+		log.Error().Str("path", input).Msg("invalid SBOM document")
 
-		return fmt.Errorf("%s: %w", path, errors.ErrInvalidDoc)
+		return fmt.Errorf("%s: %w", input, errors.ErrInvalidDoc)
 	}
 
 	for _, pkg := range kdoc.Packages {

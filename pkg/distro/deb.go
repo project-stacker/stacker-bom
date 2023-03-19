@@ -15,10 +15,10 @@ import (
 	"stackerbuild.io/sbom/pkg/build"
 )
 
-func ParsePackage(path, author, organization, license string) error {
-	debfile, _, err := deb.LoadFile(path)
+func ParsePackage(input, output, author, organization, license string) error {
+	debfile, _, err := deb.LoadFile(input)
 	if err != nil {
-		log.Error().Err(err).Str("path", path).Msg("unable to load package")
+		log.Error().Err(err).Str("path", input).Msg("unable to load package")
 
 		return err
 	}
@@ -106,9 +106,8 @@ func ParsePackage(path, author, organization, license string) error {
 		}
 	}
 
-	spdxfile := path + ".k8s.spdx"
-	if err := kdoc.Write(spdxfile); err != nil {
-		log.Error().Err(err).Str("path", spdxfile).Msg("unable to write output")
+	if err := kdoc.Write(output); err != nil {
+		log.Error().Err(err).Str("path", output).Msg("unable to write output")
 
 		return err
 	}

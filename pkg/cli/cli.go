@@ -29,7 +29,7 @@ func GenerateCmd() *cobra.Command {
 		Short: "Generate a SBOM file from a package",
 		Long:  "Generate a SBOM file from a package",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := distro.ParsePackage(input, Author, Organization, License); err != nil {
+			if err := distro.ParsePackage(input, output, Author, Organization, License); err != nil {
 				log.Error().Err(err).Msg("generate failed")
 				os.Exit(1)
 			}
@@ -39,6 +39,7 @@ func GenerateCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&input, "input", "i", "", "input file")
 	_ = cmd.MarkFlagRequired("input")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file")
+	_ = cmd.MarkFlagRequired("output")
 	cmd.Flags().StringVarP(&format, "format", "f", "spdx", "output format (spdx, default:spdx)")
 	cmd.Flags().StringVarP(&Author, "author", "", "", "set author of this SBOM document")
 	cmd.Flags().StringVarP(&Organization, "organization", "", "", "set organization of this SBOM document")
@@ -58,7 +59,7 @@ func BuildCmd() *cobra.Command {
 		Short: "Build a SBOM file from a filesystem layout",
 		Long:  "Build a SBOM file from a filesystem layout",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := fs.ParsePackage(input, Author, Organization, License, pkgname, pkgversion); err != nil {
+			if err := fs.ParsePackage(input, output, Author, Organization, License, pkgname, pkgversion); err != nil {
 				log.Error().Err(err).Msg("generate failed")
 				os.Exit(1)
 			}
@@ -68,6 +69,7 @@ func BuildCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&input, "input", "i", "", "input file")
 	_ = cmd.MarkFlagRequired("input")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file")
+	_ = cmd.MarkFlagRequired("output")
 	cmd.Flags().StringVarP(&Author, "author", "", "", "set author of this SBOM document")
 	cmd.Flags().StringVarP(&Organization, "organization", "", "", "set organization of this SBOM document")
 	cmd.Flags().StringVarP(&License, "license", "", "", "set license of this SBOM document")
