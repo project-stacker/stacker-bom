@@ -7,6 +7,10 @@ TOOLSDIR := $(shell pwd)/hack/tools
 GOLINTER := $(TOOLSDIR)/bin/golangci-lint
 GOLINTER_VERSION := v1.51.2
 
+BINARY := stacker-sbom
+OS ?= linux
+ARCH ?= amd64
+
 .PHONY: all
 all: binary lint
 
@@ -18,7 +22,7 @@ $(GOLINTER):
 .PHONY: binary
 binary:
 	mkdir -p ${BINDIR}
-	go build -v -trimpath -ldflags "-X stackerbuild.io/sbom/pkg/build.ReleaseTag=${RELEASE_TAG} -X stackerbuild.io/sbom/pkg/build.Commit=${COMMIT} -s -w" -o ${BINDIR}/sbom ./cmd/sbom/...
+	GOOS=${OS} GOARCH=${ARCH} go build -v -trimpath -ldflags "-X stackerbuild.io/sbom/pkg/build.ReleaseTag=${RELEASE_TAG} -X stackerbuild.io/sbom/pkg/build.Commit=${COMMIT} -s -w" -o ${BINDIR}/${BINARY}-${OS}-${ARCH} ./cmd/sbom/...
 
 .PHONY: lint
 lint: ./golangcilint.yaml $(GOLINTER)

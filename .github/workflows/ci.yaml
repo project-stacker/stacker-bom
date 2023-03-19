@@ -17,6 +17,8 @@ jobs:
     strategy:
       matrix:
         go-version: ["1.20"]
+        os: ["linux"]
+        arch: ["amd64"]
     steps:
       - uses: actions/checkout@v3
       - uses: benjlevesque/short-sha@v2.1
@@ -27,7 +29,7 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: build
         run: |
-          make binary
+          make binary OS=${{ matrix.os }} ARCH=${{ matrix.arch }}
       - name: lint
         run: |
           make lint
@@ -36,7 +38,7 @@ jobs:
       - uses: actions/cache/save@v3
         if: always()
         with:
-          path: bin/sbom
+          file: bin/stacker-sbom-*
           key: ${{ github.sha }}
   release:
     if: github.event_name == 'release' && github.event.action== 'published'
@@ -44,6 +46,8 @@ jobs:
     strategy:
       matrix:
         go-version: ["1.20"]
+        os: ["linux"]
+        arch: ["amd64"]
     steps:
       - uses: actions/checkout@v3
       - name: Set up golang ${{ matrix.go-version }}
@@ -52,7 +56,7 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: build
         run: |
-          make binary RELEASE_TAG=${{ github.event.release.tag_name }}
+          make binary RELEASE_TAG=${{ github.event.release.tag_name }} OS=${{ matrix.os }} ARCH=${{ matrix.arch }}
       - uses: actions/cache/save@v3
         if: always()
         with:
@@ -62,7 +66,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: bin/sbom
+          file: bin/stacker-sbom-*
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
