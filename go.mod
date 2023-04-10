@@ -6,7 +6,7 @@ require (
 	github.com/minio/sha256-simd v1.0.0
 	github.com/rs/zerolog v1.29.0
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	pault.ag/go/debian v0.12.0
 	sigs.k8s.io/bom v0.4.1
 )
