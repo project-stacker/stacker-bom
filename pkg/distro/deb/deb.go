@@ -330,7 +330,7 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 			return err
 		}
 
-		if strings.HasPrefix(line, "/usr/share/doc/") && strings.HasSuffix(line, "copyright") {
+		if strings.HasPrefix(line, "/usr/share/doc/") && strings.HasSuffix(strings.ToLower(line), "copyright") {
 			log.Info().Str("path", line).Msg("license/copyright found")
 
 			buf, err := os.ReadFile(line)

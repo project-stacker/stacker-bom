@@ -8,6 +8,7 @@ import (
 	"sigs.k8s.io/bom/pkg/spdx"
 	"stackerbuild.io/stacker-bom/errors"
 	"stackerbuild.io/stacker-bom/pkg/distro/deb"
+	"stackerbuild.io/stacker-bom/pkg/distro/rpm"
 )
 
 type Distro interface {
@@ -15,11 +16,18 @@ type Distro interface {
 }
 
 func InstalledPackages(doc *spdx.Document) error {
-	err := deb.InstalledPackages(doc)
-	if err != nil {
-		log.Error().Err(err).Msg("unable to get installed packages")
+	deberr := deb.InstalledPackages(doc)
+	if deberr != nil {
+		log.Error().Err(deberr).Msg("deb: unable to get installed packages")
+	}
 
-		return err
+	rpmerr := rpm.InstalledPackages(doc)
+	if rpmerr != nil {
+		log.Error().Err(rpmerr).Msg("rpm: unable to get installed packages")
+	}
+
+	if deberr != nil && rpmerr != nil {
+		return errors.ErrNotFound
 	}
 
 	return nil
