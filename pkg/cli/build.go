@@ -31,8 +31,8 @@ func BuildCmd() *cobra.Command {
 				zerolog.SetGlobalLevel(zerolog.DebugLevel)
 			}
 
-			if err := fs.BuildPackage(paths, output, name,
-				Author, Organization, License, pkgname, pkgversion,
+			if err := fs.BuildPackage(name, Author, Organization, License,
+				pkgname, pkgversion, paths, output,
 			); err != nil {
 				log.Error().Err(err).Msg("build failed")
 				os.Exit(1)

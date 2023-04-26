@@ -23,7 +23,7 @@ func GenerateCmd() *cobra.Command {
 				zerolog.SetGlobalLevel(zerolog.DebugLevel)
 			}
 
-			if err := distro.ParsePackage(input, output, Author, Organization, License); err != nil {
+			if err := distro.ParsePackage(input, Author, Organization, License, output); err != nil {
 				log.Error().Err(err).Msg("generate failed")
 				os.Exit(1)
 			}

@@ -172,8 +172,8 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 	return nil
 }
 
-func BuildPackage(inputPaths []string, output, name, author, organization,
-	license, pkgname, pkgversion string,
+func BuildPackage(name, author, organization, license,
+	pkgname, pkgversion string, inputPaths []string, output string,
 ) error {
 	kdoc := k8spdx.NewDocument()
 	kdoc.Name = name

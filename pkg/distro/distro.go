@@ -33,7 +33,7 @@ func InstalledPackages(doc *spdx.Document) error {
 	return nil
 }
 
-func ParsePackage(input, output, author, organization, license string) error {
+func ParsePackage(input, author, organization, license, output string) error {
 	mtype, err := mimetype.DetectFile(input)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to detect mime-type")
