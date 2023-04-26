@@ -65,8 +65,6 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 	sdoc := spdxhelpers.ToFormatModel(bom)
 	sdoc.CreationInfo.Creators = []spdx.Creator{}
 
-	log.Info().Interface("syft bom", bom).Msg("syft bom generated")
-
 	contents, err := formats.Encode(bom, spdxjson.Format())
 	if err != nil {
 		return err
@@ -113,14 +111,14 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 
 		cksum := shaWriter.Sum(nil)
 
-		file := k8spdx.NewFile()
-		file.SetEntity(
+		kfile := k8spdx.NewFile()
+		kfile.SetEntity(
 			&k8spdx.Entity{
 				Name:     path,
 				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
 			},
 		)
-		if err := kpkg.AddFile(file); err != nil {
+		if err := kpkg.AddFile(kfile); err != nil {
 			log.Error().Err(err).Msg("unable to add file to package")
 
 			return err
@@ -157,15 +155,15 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 
 	cksum := shaWriter.Sum(nil)
 
-	file := k8spdx.NewFile()
-	file.SetEntity(
+	kfile := k8spdx.NewFile()
+	kfile.SetEntity(
 		&k8spdx.Entity{
 			Name:     input,
 			Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
 		},
 	)
 
-	if err := kpkg.AddFile(file); err != nil {
+	if err := kpkg.AddFile(kfile); err != nil {
 		log.Error().Err(err).Msg("unable to add file to package")
 
 		return err
@@ -174,7 +172,7 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 	return nil
 }
 
-func BuildPackage(inputDirs, inputFiles []string, output, name, author, organization,
+func BuildPackage(inputPaths []string, output, name, author, organization,
 	license, pkgname, pkgversion string,
 ) error {
 	kdoc := k8spdx.NewDocument()
@@ -203,23 +201,30 @@ func BuildPackage(inputDirs, inputFiles []string, output, name, author, organiza
 		return err
 	}
 
-	for _, dir := range inputDirs {
-		log.Info().Str("dir", dir).Str("package", pkgname).Msg("adding dir to package")
+	for _, ipath := range inputPaths {
+		pinfo, err := os.Lstat(ipath)
+		if err != nil {
+			log.Error().Err(err).Str("path", ipath).Msg("unable to stat path")
 
-		if err := BuildPackageFromDir(dir, pkgname, kdoc, kpkg); err != nil {
 			return err
+		}
+
+		if pinfo.IsDir() {
+			log.Info().Str("dir", ipath).Str("package", pkgname).Msg("adding dir to package")
+
+			if err := BuildPackageFromDir(ipath, pkgname, kdoc, kpkg); err != nil {
+				return err
+			}
+		} else {
+			log.Info().Str("file", ipath).Str("package", pkgname).Msg("adding dir to package")
+
+			if err := BuildPackageFromFile(ipath, kpkg); err != nil {
+				return err
+			}
 		}
 	}
 
-	for _, file := range inputFiles {
-		log.Info().Str("file", file).Str("package", pkgname).Msg("adding dir to package")
-
-		if err := BuildPackageFromFile(file, kpkg); err != nil {
-			return err
-		}
-	}
-
-	if err := kdoc.Write(output); err != nil {
+	if err := stbom.WriteDocument(kdoc, output); err != nil {
 		log.Error().Err(err).Str("path", output).Msg("unable to write output")
 
 		return err

@@ -20,8 +20,7 @@ func BuildCmd() *cobra.Command {
 	name := ""
 	pkgname := ""
 	pkgversion := ""
-	dirs := []string{}
-	files := []string{}
+	paths := []string{}
 
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -32,9 +31,7 @@ func BuildCmd() *cobra.Command {
 				zerolog.SetGlobalLevel(zerolog.DebugLevel)
 			}
 
-			log.Info().Interface("dirs", dirs).Msg("dir")
-
-			if err := fs.BuildPackage(dirs, files, output, name,
+			if err := fs.BuildPackage(paths, output, name,
 				Author, Organization, License, pkgname, pkgversion,
 			); err != nil {
 				log.Error().Err(err).Msg("build failed")
@@ -43,10 +40,8 @@ func BuildCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&dirs, "dir", "d", []string{},
+	cmd.Flags().StringSliceVarP(&paths, "path", "p", []string{},
 		"dir(s) to be included in this package (arg can be used multiple times)")
-	cmd.Flags().StringSliceVarP(&files, "file", "f", []string{},
-		"file(s) to be included in this package (arg can be used multiple times)")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output file")
 	_ = cmd.MarkFlagRequired("output")
 	cmd.Flags().StringVarP(&License, "license", "", "", "set license of this SBOM document")
