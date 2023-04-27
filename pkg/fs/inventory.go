@@ -48,6 +48,11 @@ func GenerateInventory(root string, exclude []string, output string) error {
 			return filepath.SkipDir
 		}
 
+		// skip excluded files
+		if isExcluded(path, exclude) {
+			return nil
+		}
+
 		// skip dirs for generating the inventory
 		if info.IsDir() {
 			return nil
