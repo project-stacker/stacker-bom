@@ -8,9 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/anchore/syft/syft"
-	"github.com/anchore/syft/syft/formats"
 	"github.com/anchore/syft/syft/formats/common/spdxhelpers"
-	"github.com/anchore/syft/syft/formats/spdxjson"
 	"github.com/anchore/syft/syft/pkg/cataloger"
 	"github.com/anchore/syft/syft/sbom"
 	"github.com/anchore/syft/syft/source"
@@ -56,7 +54,7 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 
 	bom := sbom.SBOM{
 		Artifacts: sbom.Artifacts{
-			PackageCatalog:    pkgCatalog,
+			Packages:          pkgCatalog,
 			LinuxDistribution: actualDistro,
 		},
 		Relationships: relationships,
@@ -65,29 +63,23 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 	sdoc := spdxhelpers.ToFormatModel(bom)
 	sdoc.CreationInfo.Creators = []spdx.Creator{}
 
-	contents, err := formats.Encode(bom, spdxjson.Format())
-	if err != nil {
-		return err
+	tpkgs := map[string]*k8spdx.Package{}
+
+	for _, tpkg := range sdoc.Packages {
+		p := stbom.ConvertFromSyftPackage(tpkg)
+		tpkgs[p.SPDXID()] = p
 	}
 
-	file, err := os.CreateTemp("", "stacker-bom-syft-")
-	if err != nil {
-		return err
+	kdoc.Packages = stbom.MergeMaps(kdoc.Packages, tpkgs)
+
+	tfils := map[string]*k8spdx.File{}
+
+	for _, tfil := range sdoc.Files {
+		conv := stbom.ConvertFromSyftFile(tfil)
+		tfils[conv.SPDXID()] = conv
 	}
 
-	defer os.Remove(file.Name())
-
-	if err := os.WriteFile(file.Name(), contents, 0o644); err != nil { //nolint:gosec,gomnd
-		return err
-	}
-
-	tdoc, err := k8spdx.OpenDoc(file.Name())
-	if err != nil {
-		return err
-	}
-
-	kdoc.Files = stbom.MergeMaps(kdoc.Files, tdoc.Files)
-	kdoc.Packages = stbom.MergeMaps(kdoc.Packages, tdoc.Packages)
+	kdoc.Files = stbom.MergeMaps(kdoc.Files, tfils)
 
 	err = filepath.Walk(input, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -136,10 +128,80 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 }
 
 func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
-	if _, err := os.Lstat(input); err != nil {
+	ifo, err := os.Lstat(input)
+	if err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to find path")
 
 		return err
+	}
+
+	// use anchore/syft to catalog packages
+	src, cleanup := source.NewFromFile(input)
+	defer cleanup()
+
+	scfg := cataloger.Config{
+		Search: cataloger.SearchConfig{
+			IncludeIndexedArchives:   true,
+			IncludeUnindexedArchives: true,
+			Scope:                    source.AllLayersScope,
+		},
+		Parallelism: 1,
+	}
+
+	pkgCatalog, relationships, actualDistro, err := syft.CatalogPackages(&src, scfg)
+	if err != nil {
+		log.Error().Err(err).Str("path", input).Msg("unable to parse packages")
+
+		return err
+	}
+
+	bom := sbom.SBOM{
+		Artifacts: sbom.Artifacts{
+			Packages:          pkgCatalog,
+			LinuxDistribution: actualDistro,
+		},
+		Relationships: relationships,
+		Source:        src.Metadata,
+	}
+	sdoc := spdxhelpers.ToFormatModel(bom)
+	sdoc.CreationInfo.Creators = []spdx.Creator{}
+
+	tpkgs := map[string]*k8spdx.Package{}
+
+	for _, tpkg := range sdoc.Packages {
+		conv := stbom.ConvertFromSyftPackage(tpkg)
+		tpkgs[conv.SPDXID()] = conv
+
+		if err := kpkg.AddPackage(conv); err != nil {
+			log.Error().Err(err).Str("path", conv.Name).Msg("unable to add package")
+
+			return err
+		}
+	}
+
+	tfils := map[string]*k8spdx.File{}
+
+	for _, tfil := range sdoc.Files {
+		conv := stbom.ConvertFromSyftFile(tfil)
+		tfils[conv.SPDXID()] = conv
+
+		pfo, err := os.Lstat(conv.Name)
+		if err != nil {
+			log.Error().Err(err).Str("path", conv.Name).Msg("unable to find path")
+
+			return err
+		}
+
+		if os.SameFile(ifo, pfo) {
+			// we add this file below
+			continue
+		}
+
+		if err := kpkg.AddFile(conv); err != nil {
+			log.Error().Err(err).Str("path", conv.Name).Msg("unable to add file to package")
+
+			return err
+		}
 	}
 
 	fhandle, err := os.Open(input)
@@ -216,7 +278,7 @@ func BuildPackage(name, author, organization, license,
 				return err
 			}
 		} else {
-			log.Info().Str("file", ipath).Str("package", pkgname).Msg("adding dir to package")
+			log.Info().Str("file", ipath).Str("package", pkgname).Msg("adding file to package")
 
 			if err := BuildPackageFromFile(ipath, kpkg); err != nil {
 				return err

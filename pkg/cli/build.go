@@ -3,10 +3,10 @@ package cli
 import (
 	"os"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"stackerbuild.io/stacker-bom/pkg/fs"
+	stlog "stackerbuild.io/stacker-bom/pkg/log"
 )
 
 /*
@@ -28,7 +28,7 @@ func BuildCmd() *cobra.Command {
 		Long:  "Build a SBOM from project dir(s)/file(s) on the filesystem",
 		Run: func(cmd *cobra.Command, args []string) {
 			if Verbose {
-				zerolog.SetGlobalLevel(zerolog.DebugLevel)
+				stlog.SetLevel(stlog.DebugLevel)
 			}
 
 			if err := fs.BuildPackage(name, Author, Organization, License,

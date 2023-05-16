@@ -49,10 +49,6 @@ linters-settings:
       mnd:
         checks: argument,case,condition,operation,return,assign
         ignored-numbers: 10,64
-  gomoddirectives:
-    replace-allow-list:
-      - helm.sh/helm/v3
-      - github.com/opencontainers/umoci
 issues:
   exclude-rules:
     - path: pkg/extensions/search/schema.resolvers.go
