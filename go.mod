@@ -12,7 +12,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spdx/tools-golang v0.5.0
 	github.com/spf13/cobra v1.7.0
-	pault.ag/go/debian v0.12.0
+	pault.ag/go/debian v0.15.0
 	sigs.k8s.io/bom v0.5.2-0.20230512052447-fef7b03b207d
 )
 
@@ -119,7 +119,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gitlab.alpinelinux.org/alpine/go v0.7.0 // indirect
-	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/exp v0.0.0-20230202163644-54bba9f4231b // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
@@ -136,6 +136,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	pault.ag/go/topsort v0.0.0-20160530003732-f98d2ad46e1a // indirect
+	pault.ag/go/topsort v0.1.1 // indirect
 	sigs.k8s.io/release-utils v0.7.4 // indirect
 )
