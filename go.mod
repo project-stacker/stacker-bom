@@ -9,7 +9,7 @@ require (
 	github.com/minio/sha256-simd v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/rs/zerolog v1.29.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spdx/tools-golang v0.5.0
 	github.com/spf13/cobra v1.7.0
 	pault.ag/go/debian v0.12.0
