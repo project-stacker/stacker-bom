@@ -15,6 +15,9 @@ ORAS := $(TOOLSDIR)/bin/oras
 ORAS_VERSION := 1.0.0-rc.1
 REGCTL := $(TOOLSDIR)/bin/regctl
 REGCTL_VERSION := 0.5.0
+# BOM tools
+K8S_BOM := $(TOOLSDIR)/bin/bom
+K8S_BOM_VERSION := 0.5.1
 BATS := $(TOOLSDIR)/bin/bats
 
 BINARY := stacker-bom
@@ -59,6 +62,11 @@ $(REGCTL):
 	curl -Lo $(REGCTL) https://github.com/regclient/regclient/releases/download/v$(REGCTL_VERSION)/regctl-linux-amd64
 	chmod +x $(REGCTL)
 
+$(K8S_BOM):
+	mkdir -p $(TOOLSDIR)/bin
+	curl -Lo $(K8S_BOM) https://github.com/kubernetes-sigs/bom/releases/download/v$(K8S_BOM_VERSION)/bom-amd64-linux
+	chmod +x $(K8S_BOM)
+
 $(BATS):
 	rm -rf bats-core; \
 		git clone https://github.com/bats-core/bats-core.git; \
@@ -66,7 +74,7 @@ $(BATS):
 		rm -rf bats-core
 
 .PHONY: test
-test: $(BATS) $(ZOT) $(ORAS) $(REGCTL)
+test: $(BATS) $(ZOT) $(ORAS) $(REGCTL) $(K8S_BOM)
 	go test -v -race -cover -coverpkg=./...
 	$(BATS) --trace --verbose-run --print-output-on-failure --show-output-of-passing-tests test/*.bats
 
