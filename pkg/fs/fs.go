@@ -20,7 +20,7 @@ import (
 	"stackerbuild.io/stacker-bom/pkg/buildgen"
 )
 
-func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8spdx.Package,
+func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Package,
 ) error {
 	if _, err := os.Lstat(input); err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to find path")
@@ -29,7 +29,20 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 	}
 
 	// use anchore/syft to catalog packages
-	src, err := source.NewFromDirectoryWithName(input, pkgname)
+	detection, err := source.Detect("dir:"+input, source.DefaultDetectConfig())
+	if err != nil {
+		log.Error().Err(err).Str("path", input).Msg("unable to parse path")
+
+		return err
+	}
+
+	src, err := detection.NewSource(source.DefaultDetectionSourceConfig())
+	if err != nil {
+		log.Error().Err(err).Str("path", input).Msg("unable to parse path")
+
+		return err
+	}
+
 	if err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to parse path")
 
@@ -45,7 +58,7 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 		Parallelism: 1,
 	}
 
-	pkgCatalog, relationships, actualDistro, err := syft.CatalogPackages(&src, scfg)
+	pkgCatalog, relationships, actualDistro, err := syft.CatalogPackages(src, scfg)
 	if err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to parse packages")
 
@@ -58,7 +71,7 @@ func BuildPackageFromDir(input, pkgname string, kdoc *k8spdx.Document, kpkg *k8s
 			LinuxDistribution: actualDistro,
 		},
 		Relationships: relationships,
-		Source:        src.Metadata,
+		Source:        src.Describe(),
 	}
 	sdoc := spdxhelpers.ToFormatModel(bom)
 	sdoc.CreationInfo.Creators = []spdx.Creator{}
@@ -136,8 +149,19 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 	}
 
 	// use anchore/syft to catalog packages
-	src, cleanup := source.NewFromFile(input)
-	defer cleanup()
+	detection, err := source.Detect("file:"+input, source.DefaultDetectConfig())
+	if err != nil {
+		log.Error().Err(err).Str("path", input).Msg("unable to parse path")
+
+		return err
+	}
+
+	src, err := detection.NewSource(source.DefaultDetectionSourceConfig())
+	if err != nil {
+		log.Error().Err(err).Str("path", input).Msg("unable to parse path")
+
+		return err
+	}
 
 	scfg := cataloger.Config{
 		Search: cataloger.SearchConfig{
@@ -148,7 +172,7 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 		Parallelism: 1,
 	}
 
-	pkgCatalog, relationships, actualDistro, err := syft.CatalogPackages(&src, scfg)
+	pkgCatalog, relationships, actualDistro, err := syft.CatalogPackages(src, scfg)
 	if err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to parse packages")
 
@@ -161,7 +185,7 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 			LinuxDistribution: actualDistro,
 		},
 		Relationships: relationships,
-		Source:        src.Metadata,
+		Source:        src.Describe(),
 	}
 	sdoc := spdxhelpers.ToFormatModel(bom)
 	sdoc.CreationInfo.Creators = []spdx.Creator{}
@@ -274,7 +298,7 @@ func BuildPackage(name, author, organization, license,
 		if pinfo.IsDir() {
 			log.Info().Str("dir", ipath).Str("package", pkgname).Msg("adding dir to package")
 
-			if err := BuildPackageFromDir(ipath, pkgname, kdoc, kpkg); err != nil {
+			if err := BuildPackageFromDir(ipath, kdoc, kpkg); err != nil {
 				return err
 			}
 		} else {
