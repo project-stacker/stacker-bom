@@ -1,8 +1,10 @@
 package rpm
 
 import (
+	"crypto/sha1" //nolint:gosec // used only to produce the sha1 checksum field
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -87,6 +89,7 @@ func ParsePackage(input, output, author, organization, license string) error {
 		}{
 			Organization: vendor[0],
 		},
+		FilesAnalyzed:   true,
 		LicenseDeclared: pkglicense,
 	}
 
@@ -119,18 +122,35 @@ func ParsePackage(input, output, author, organization, license string) error {
 		}
 		defer fhandle.Close()
 
-		shaWriter := sha256.New()
-		if _, err := io.Copy(shaWriter, fhandle); err != nil {
-			return err
+		buf := make([]byte, info.Size())
+
+		var bufsz int
+
+		if bufsz, err = fhandle.Read(buf); err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Error().Err(err).Str("name", finfo.Name()).Msg("unable to read content")
+
+				return err
+			}
 		}
 
-		cksum := shaWriter.Sum(nil)
+		cksumSHA1 := sha1.Sum(buf) //nolint:gosec // used only to produce the sha1 checksum field
+		cksumSHA256 := sha256.Sum256(buf)
+
+		log.Info().Str("name", info.Name()).
+			Int("size", bufsz).
+			Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksumSHA256[:]))).
+			Msg("file entry detected")
 
 		sfile := spdx.NewFile()
+		sfile.LicenseInfoInFile = pkglicense
 		sfile.SetEntity(
 			&spdx.Entity{
-				Name:     finfo.Name(),
-				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
+				Name: finfo.Name(),
+				Checksum: map[string]string{
+					"SHA1":   hex.EncodeToString(cksumSHA1[:]),
+					"SHA256": hex.EncodeToString(cksumSHA256[:]),
+				},
 			},
 		)
 
@@ -162,6 +182,7 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 		}{
 			Person: pkg.Vendor,
 		},
+		FilesAnalyzed:   true,
 		LicenseDeclared: pkg.License,
 	}
 
@@ -190,18 +211,35 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 		}
 		defer fhandle.Close()
 
-		shaWriter := sha256.New()
-		if _, err := io.Copy(shaWriter, fhandle); err != nil {
-			return err
+		buf := make([]byte, info.Size())
+
+		var bufsz int
+
+		if bufsz, err = fhandle.Read(buf); err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Error().Err(err).Str("name", info.Name()).Msg("unable to read content")
+
+				return err
+			}
 		}
 
-		cksum := shaWriter.Sum(nil)
+		cksumSHA1 := sha1.Sum(buf) //nolint:gosec // used only to produce the sha1 checksum field
+		cksumSHA256 := sha256.Sum256(buf)
+
+		log.Info().Str("name", info.Name()).
+			Int("size", bufsz).
+			Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksumSHA256[:]))).
+			Msg("file entry detected")
 
 		sfile := spdx.NewFile()
+		sfile.LicenseInfoInFile = "unknown"
 		sfile.SetEntity(
 			&spdx.Entity{
-				Name:     ifile.Path,
-				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
+				Name: ifile.Path,
+				Checksum: map[string]string{
+					"SHA1":   hex.EncodeToString(cksumSHA1[:]),
+					"SHA256": hex.EncodeToString(cksumSHA256[:]),
+				},
 			},
 		)
 

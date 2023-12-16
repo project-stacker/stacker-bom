@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"compress/gzip"
+	"crypto/sha1" //nolint:gosec // used only to produce the sha1 checksum field
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -93,6 +94,7 @@ func ParsePackage(input, output, author, organization, license string) error {
 		}{
 			Person: apk.PkgInfo.PkgMaintainer,
 		},
+		FilesAnalyzed:   true,
 		LicenseDeclared: pkglicense,
 	}
 
@@ -151,18 +153,23 @@ func ParsePackage(input, output, author, organization, license string) error {
 			}
 		}
 
-		cksum := sha256.Sum256(buf)
+		cksumSHA1 := sha1.Sum(buf) //nolint:gosec // used only to produce the sha1 checksum field
+		cksumSHA256 := sha256.Sum256(buf)
 
 		log.Info().Str("name", hdr.Name).
 			Int("size", bufsz).
-			Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksum[:]))).
+			Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksumSHA256[:]))).
 			Msg("file entry detected")
 
 		sfile := &spdx.File{
 			Entity: spdx.Entity{
-				Name:     fmt.Sprintf("/%s", hdr.Name),
-				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum[:])},
+				Name: fmt.Sprintf("/%s", hdr.Name),
+				Checksum: map[string]string{
+					"SHA1":   hex.EncodeToString(cksumSHA1[:]),
+					"SHA256": hex.EncodeToString(cksumSHA256[:]),
+				},
 			},
+			LicenseInfoInFile: license,
 		}
 		if err := spkg.AddFile(sfile); err != nil {
 			log.Error().Err(err).Msg("unable to add file to package")
@@ -192,11 +199,12 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 		}{
 			Person: pkg.PackageMaintainer,
 		},
+		FilesAnalyzed:   true,
 		LicenseDeclared: pkg.PackageLicense,
 	}
 
 	for _, file := range files {
-		sinfo, err := os.Stat(file)
+		info, err := os.Stat(file)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				continue
@@ -205,8 +213,8 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 			return err
 		}
 
-		if !sinfo.Mode().IsRegular() {
-			log.Warn().Str("file", file).Interface("mode", sinfo.Mode()).Msg("skipping entry since not a regular file")
+		if !info.Mode().IsRegular() {
+			log.Warn().Str("file", file).Interface("mode", info.Mode()).Msg("skipping entry since not a regular file")
 
 			continue
 		}
@@ -217,18 +225,35 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 		}
 		defer fhandle.Close()
 
-		shaWriter := sha256.New()
-		if _, err := io.Copy(shaWriter, fhandle); err != nil {
-			return err
+		buf := make([]byte, info.Size())
+
+		var bufsz int
+
+		if bufsz, err = fhandle.Read(buf); err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Error().Err(err).Str("name", info.Name()).Msg("unable to read content")
+
+				return err
+			}
 		}
 
-		cksum := shaWriter.Sum(nil)
+		cksumSHA1 := sha1.Sum(buf) //nolint:gosec // used only to produce the sha1 checksum field
+		cksumSHA256 := sha256.Sum256(buf)
+
+		log.Info().Str("name", info.Name()).
+			Int("size", bufsz).
+			Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksumSHA256[:]))).
+			Msg("file entry detected")
 
 		sfile := spdx.NewFile()
+		sfile.LicenseInfoInFile = "unknown"
 		sfile.SetEntity(
 			&spdx.Entity{
-				Name:     file,
-				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
+				Name: file,
+				Checksum: map[string]string{
+					"SHA1":   hex.EncodeToString(cksumSHA1[:]),
+					"SHA256": hex.EncodeToString(cksumSHA256[:]),
+				},
 			},
 		)
 

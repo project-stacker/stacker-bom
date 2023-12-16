@@ -9,7 +9,7 @@ GOLINTER_VERSION := v1.52.2
 
 # OCI registry
 ZOT := $(TOOLSDIR)/bin/zot
-ZOT_VERSION := 2.0.0-rc5
+ZOT_VERSION := 2.0.0
 # OCI registry clients
 ORAS := $(TOOLSDIR)/bin/oras
 ORAS_VERSION := 1.0.0-rc.1

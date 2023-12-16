@@ -18,7 +18,7 @@ function teardown() {
   docker run -v ${TOPDIR}/bin:/opt/bin -v ${BOMD}:/stacker-artifacts -i ubuntu:latest /opt/bin/stacker-bom-linux-amd64 discover -o /stacker-artifacts/discover.json
   [ -f ${BOMD}/discover.json ]
   # verify against inventory
-  ${TOPDIR}/bin/stacker-bom-linux-amd64 verify -i ${BOMD}/discover.json -t ${BOMD}/inventory.json -m ${BOMD}/missing.json
+  docker run -v ${TOPDIR}/bin:/opt/bin -v ${BOMD}:/stacker-artifacts -i ubuntu:latest /opt/bin/stacker-bom-linux-amd64 verify -i /stacker-artifacts/discover.json -t  /stacker-artifacts/inventory.json -m  /stacker-artifacts/missing.json
   [ ! -f ${BOMD}/missing.json ]
   # push the image
   skopeo copy --format=oci --dest-tls-verify=false docker://ubuntu:latest docker://${ZOT_HOST}:${ZOT_PORT}/ubuntu:latest
