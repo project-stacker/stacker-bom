@@ -31,16 +31,6 @@ func WriteDocument(doc *spdx.Document, path string) error {
 	if err := os.WriteFile(path, []byte(markup), 0o644); err != nil { //nolint:gosec,gomnd // G306: Expect WriteFile
 		return fmt.Errorf("writing SBOM: %w", err)
 	}
-	/*
-		// Export the SBOM as in-toto provenance
-		if opts.provenancePath != "" {
-			if err := doc.WriteProvenanceStatement(
-				spdx.DefaultProvenanceOptions, opts.provenancePath,
-			); err != nil {
-				return fmt.Errorf("writing SBOM as provenance statement: %w", err)
-			}
-		}
-	*/
 
 	return nil
 }

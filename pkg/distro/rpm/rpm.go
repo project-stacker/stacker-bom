@@ -193,6 +193,8 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 		return err
 	}
 
+	filesFound := false
+
 	for _, ifile := range ifiles {
 		info, err := os.Lstat(ifile.Path)
 		if err != nil {
@@ -204,6 +206,8 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 		if !info.Mode().IsRegular() {
 			continue
 		}
+
+		filesFound = true
 
 		fhandle, err := os.Open(ifile.Path)
 		if err != nil {
@@ -263,6 +267,12 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 		}
 	}
 
+	if !filesFound {
+		log.Info().Str("package", pkg.Name).Msg("ignoring empty package")
+
+		return nil
+	}
+
 	if err := doc.AddPackage(spkg); err != nil {
 		log.Error().Err(err).Msg("unable to add package to doc")
 
@@ -295,7 +305,8 @@ func InstalledPackages(doc *spdx.Document) error {
 			continue
 		}
 
-		log.Info().Str("package", pkg.Name).Str("version", pkg.Version).Msg("discovered installed package")
+		log.Info().Str("package", pkg.Name).Str("version", pkg.Version).
+			Str("license", pkg.License).Msg("discovered installed package")
 	}
 
 	return nil

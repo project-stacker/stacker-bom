@@ -17,16 +17,19 @@ type Distro interface {
 }
 
 func InstalledPackages(doc *spdx.Document) error {
+	// check assuming deb
 	deberr := deb.InstalledPackages(doc)
 	if deberr == nil {
 		return nil
 	}
 
+	// check assuming rpm
 	rpmerr := rpm.InstalledPackages(doc)
 	if rpmerr == nil {
 		return nil
 	}
 
+	// check assuming apk
 	apkerr := apk.InstalledPackages(doc)
 	if apkerr == nil {
 		return nil
