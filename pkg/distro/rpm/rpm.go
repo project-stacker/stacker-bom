@@ -236,7 +236,7 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 			Msg("file entry detected")
 
 		sfile := spdx.NewFile()
-		sfile.LicenseInfoInFile = "unknown"
+		sfile.LicenseInfoInFile = pkg.License
 		sfile.SetEntity(
 			&spdx.Entity{
 				Name: ifile.Path,

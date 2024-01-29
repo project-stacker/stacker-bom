@@ -246,7 +246,7 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 			Msg("file entry detected")
 
 		sfile := spdx.NewFile()
-		sfile.LicenseInfoInFile = "unknown"
+		sfile.LicenseInfoInFile = pkg.PackageLicense
 		sfile.SetEntity(
 			&spdx.Entity{
 				Name: file,

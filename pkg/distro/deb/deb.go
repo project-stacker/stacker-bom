@@ -21,6 +21,8 @@ import (
 	"stackerbuild.io/stacker-bom/pkg/buildgen"
 )
 
+const unknownLicense = "unknown"
+
 // ParsePackage given a deb pkg emits a sbom.
 func ParsePackage(input, output, author, organization, license string) error {
 	debfile, _, err := deb.LoadFile(input)
@@ -114,9 +116,16 @@ func ParsePackage(input, output, author, organization, license string) error {
 		}
 
 		if strings.HasPrefix(hdr.Name, "./usr/share/doc/") && strings.HasSuffix(hdr.Name, "copyright") {
-			log.Info().Str("path", hdr.Name).Msg("license/copyright found")
 			spkg.CopyrightText = string(buf)
+			license = getSpdxLicense(string(buf))
+			log.Info().Str("path", hdr.Name).Str("license", license).Msg("license/copyright found")
 		}
+	}
+
+	spkg.LicenseDeclared = license
+
+	for _, file := range spkg.Files() {
+		file.LicenseInfoInFile = license
 	}
 
 	if err := bom.WriteDocument(sdoc, output); err != nil {
@@ -273,6 +282,8 @@ func InstalledPackages(doc *spdx.Document) error {
 }
 
 func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
+	license := unknownLicense
+
 	spkg := &spdx.Package{
 		Entity: spdx.Entity{
 			Name: pkg.Package,
@@ -285,7 +296,7 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 			Person: pkg.Maintainer,
 		},
 		FilesAnalyzed:   true,
-		LicenseDeclared: "unknown",
+		LicenseDeclared: license,
 	}
 
 	fhandle, err := os.Open(path)
@@ -338,7 +349,7 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 			Msg("file entry detected")
 
 		sfile := spdx.NewFile()
-		sfile.LicenseInfoInFile = "unknown"
+		sfile.LicenseInfoInFile = unknownLicense
 		sfile.SetEntity(
 			&spdx.Entity{
 				Name: line,
@@ -366,7 +377,14 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 			}
 
 			spkg.CopyrightText = string(buf)
+			license = getSpdxLicense(string(buf))
 		}
+	}
+
+	spkg.LicenseDeclared = license
+
+	for _, file := range spkg.Files() {
+		file.LicenseInfoInFile = license
 	}
 
 	if err := doc.AddPackage(spkg); err != nil {
