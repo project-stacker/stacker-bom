@@ -1,7 +1,9 @@
 package fs
 
 import (
+	"crypto/sha1" //nolint:gosec // used only to produce the sha1 checksum field
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,7 +22,7 @@ import (
 	"stackerbuild.io/stacker-bom/pkg/buildgen"
 )
 
-func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Package,
+func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Package, license string,
 ) error {
 	if _, err := os.Lstat(input); err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to find path")
@@ -80,6 +82,9 @@ func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Packa
 
 	for _, tpkg := range sdoc.Packages {
 		p := stbom.ConvertFromSyftPackage(tpkg)
+		p.SetSPDXID(fmt.Sprintf("SPDXRef-%s", p.SPDXID()))
+		p.LicenseConcluded = license
+		p.LicenseDeclared = license
 		tpkgs[p.SPDXID()] = p
 	}
 
@@ -109,20 +114,37 @@ func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Packa
 		}
 		defer fhandle.Close()
 
-		shaWriter := sha256.New()
-		if _, err := io.Copy(shaWriter, fhandle); err != nil {
-			return err
+		buf := make([]byte, info.Size())
+
+		var bufsz int
+
+		if bufsz, err = fhandle.Read(buf); err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Error().Err(err).Str("name", info.Name()).Msg("unable to read content")
+
+				return err
+			}
 		}
 
-		cksum := shaWriter.Sum(nil)
+		cksumSHA1 := sha1.Sum(buf) //nolint:gosec // used only to produce the sha1 checksum field
+		cksumSHA256 := sha256.Sum256(buf)
+
+		log.Info().Str("name", info.Name()).
+			Int("size", bufsz).
+			Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksumSHA256[:]))).
+			Msg("file entry detected")
 
 		kfile := k8spdx.NewFile()
 		kfile.SetEntity(
 			&k8spdx.Entity{
-				Name:     path,
-				Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
+				Name: path,
+				Checksum: map[string]string{
+					"SHA1":   hex.EncodeToString(cksumSHA1[:]),
+					"SHA256": hex.EncodeToString(cksumSHA256[:]),
+				},
 			},
 		)
+		kfile.LicenseInfoInFile = license
 		if err := kpkg.AddFile(kfile); err != nil {
 			log.Error().Err(err).Msg("unable to add file to package")
 
@@ -140,7 +162,7 @@ func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Packa
 	return nil
 }
 
-func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
+func BuildPackageFromFile(input string, kpkg *k8spdx.Package, license string) error {
 	ifo, err := os.Lstat(input)
 	if err != nil {
 		log.Error().Err(err).Str("path", input).Msg("unable to find path")
@@ -194,6 +216,7 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 
 	for _, tpkg := range sdoc.Packages {
 		conv := stbom.ConvertFromSyftPackage(tpkg)
+		conv.LicenseDeclared = license
 		tpkgs[conv.SPDXID()] = conv
 
 		if err := kpkg.AddPackage(conv); err != nil {
@@ -207,6 +230,7 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package) error {
 
 	for _, tfil := range sdoc.Files {
 		conv := stbom.ConvertFromSyftFile(tfil)
+		conv.LicenseConcluded = license
 		tfils[conv.SPDXID()] = conv
 
 		pfo, err := os.Lstat(conv.Name)
@@ -269,7 +293,8 @@ func BuildPackage(name, author, organization, license,
 
 	kpkg := &k8spdx.Package{
 		Entity: k8spdx.Entity{
-			Name: pkgname,
+			Name:             pkgname,
+			LicenseConcluded: license,
 		},
 		Version: pkgversion,
 		Originator: struct {
@@ -279,6 +304,7 @@ func BuildPackage(name, author, organization, license,
 			Person: author,
 		},
 		LicenseDeclared: license,
+		FilesAnalyzed:   true,
 	}
 
 	if err := kdoc.AddPackage(kpkg); err != nil {
@@ -298,13 +324,13 @@ func BuildPackage(name, author, organization, license,
 		if pinfo.IsDir() {
 			log.Info().Str("dir", ipath).Str("package", pkgname).Msg("adding dir to package")
 
-			if err := BuildPackageFromDir(ipath, kdoc, kpkg); err != nil {
+			if err := BuildPackageFromDir(ipath, kdoc, kpkg, license); err != nil {
 				return err
 			}
 		} else {
 			log.Info().Str("file", ipath).Str("package", pkgname).Msg("adding file to package")
 
-			if err := BuildPackageFromFile(ipath, kpkg); err != nil {
+			if err := BuildPackageFromFile(ipath, kpkg, license); err != nil {
 				return err
 			}
 		}
