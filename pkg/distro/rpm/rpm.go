@@ -268,6 +268,7 @@ func InstalledPackage(doc *spdx.Document, pkg *rpmdb.PackageInfo) error {
 	}
 
 	if !filesFound {
+		// no files found!
 		log.Info().Str("package", pkg.Name).Msg("ignoring empty package")
 
 		return nil

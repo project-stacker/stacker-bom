@@ -203,6 +203,8 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 		LicenseDeclared: pkg.PackageLicense,
 	}
 
+	filesFound := false
+
 	for _, file := range files {
 		info, err := os.Stat(file)
 		if err != nil {
@@ -218,6 +220,8 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 
 			continue
 		}
+
+		filesFound = true
 
 		fhandle, err := os.Open(file)
 		if err != nil {
@@ -262,6 +266,13 @@ func InstalledPackage(doc *spdx.Document, pkg *IndexEntry, files []string) error
 
 			return err
 		}
+	}
+
+	if !filesFound {
+		// no files found!
+		log.Info().Str("package", pkg.PackageName).Msg("ignoring empty package")
+
+		return nil
 	}
 
 	if err := doc.AddPackage(spkg); err != nil {
