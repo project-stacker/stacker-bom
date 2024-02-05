@@ -308,6 +308,8 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 	scanner := bufio.NewScanner(fhandle)
 	scanner.Split(bufio.ScanLines)
 
+	filesFound := false
+
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -321,6 +323,8 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 		if !info.Mode().IsRegular() {
 			continue
 		}
+
+		filesFound = true
 
 		fhandle, err := os.Open(line)
 		if err != nil {
@@ -382,6 +386,13 @@ func InstalledPackage(doc *spdx.Document, pkg Package, path string) error {
 	}
 
 	spkg.LicenseDeclared = license
+
+	if !filesFound {
+		// no files found!
+		log.Info().Str("package", pkg.Package).Msg("ignoring empty package")
+
+		return nil
+	}
 
 	for _, file := range spkg.Files() {
 		file.LicenseInfoInFile = license
