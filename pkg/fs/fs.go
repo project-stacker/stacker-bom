@@ -258,18 +258,34 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package, license string) er
 	}
 	defer fhandle.Close()
 
-	shaWriter := sha256.New()
-	if _, err := io.Copy(shaWriter, fhandle); err != nil {
-		return err
+	buf := make([]byte, ifo.Size())
+
+	var bufsz int
+
+	if bufsz, err = fhandle.Read(buf); err != nil {
+		if !errors.Is(err, io.EOF) {
+			log.Error().Err(err).Str("name", ifo.Name()).Msg("unable to read content")
+
+			return err
+		}
 	}
 
-	cksum := shaWriter.Sum(nil)
+	cksumSHA1 := sha1.Sum(buf) //nolint:gosec // used only to produce the sha1 checksum field
+	cksumSHA256 := sha256.Sum256(buf)
+
+	log.Info().Str("name", ifo.Name()).
+		Int("size", bufsz).
+		Str("cksum", fmt.Sprintf("SHA256:%s", hex.EncodeToString(cksumSHA256[:]))).
+		Msg("file entry detected")
 
 	kfile := k8spdx.NewFile()
 	kfile.SetEntity(
 		&k8spdx.Entity{
-			Name:     input,
-			Checksum: map[string]string{"SHA256": hex.EncodeToString(cksum)},
+			Name: input,
+			Checksum: map[string]string{
+				"SHA1":   hex.EncodeToString(cksumSHA1[:]),
+				"SHA256": hex.EncodeToString(cksumSHA256[:]),
+			},
 		},
 	)
 
