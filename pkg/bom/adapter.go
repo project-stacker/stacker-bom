@@ -1,6 +1,8 @@
 package bom
 
 import (
+	"path/filepath"
+
 	"github.com/spdx/tools-golang/spdx/v2/v2_3"
 	"sigs.k8s.io/bom/pkg/spdx"
 )
@@ -37,7 +39,7 @@ func ConvertFromSyftFile(fil *v2_3.File) *spdx.File {
 	return kfil
 }
 
-func ConvertFromSyftPackage(pkg *v2_3.Package) *spdx.Package {
+func ConvertFromSyftPackage(path string, pkg *v2_3.Package) *spdx.Package {
 	kpkg := &spdx.Package{
 		Entity: spdx.Entity{
 			ID:               string(pkg.PackageSPDXIdentifier),
@@ -103,6 +105,9 @@ func ConvertFromSyftPackage(pkg *v2_3.Package) *spdx.Package {
 	}
 
 	for _, fil := range pkg.Files {
+		if path != "" {
+			fil.FileName = filepath.Join(path, fil.FileName)
+		}
 		_ = kpkg.AddFile(ConvertFromSyftFile(fil))
 	}
 

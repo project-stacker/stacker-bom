@@ -21,6 +21,8 @@ import (
 	"stackerbuild.io/stacker-bom/pkg/buildgen"
 )
 
+const spdxIDPrefix = "SPDXRef-"
+
 func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Package, license string,
 ) error {
 	if _, err := os.Lstat(input); err != nil {
@@ -80,23 +82,14 @@ func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Packa
 	tpkgs := map[string]*k8spdx.Package{}
 
 	for _, tpkg := range sdoc.Packages {
-		p := stbom.ConvertFromSyftPackage(tpkg)
-		p.SetSPDXID("SPDXRef-" + p.SPDXID())
-		p.LicenseConcluded = license
-		p.LicenseDeclared = license
-		tpkgs[p.SPDXID()] = p
+		conv := stbom.ConvertFromSyftPackage(input, tpkg)
+		conv.SetSPDXID(spdxIDPrefix + conv.SPDXID())
+		conv.LicenseConcluded = license
+		conv.LicenseDeclared = license
+		tpkgs[conv.SPDXID()] = conv
 	}
 
 	kdoc.Packages = stbom.MergeMaps(kdoc.Packages, tpkgs)
-
-	tfils := map[string]*k8spdx.File{}
-
-	for _, tfil := range sdoc.Files {
-		conv := stbom.ConvertFromSyftFile(tfil)
-		tfils[conv.SPDXID()] = conv
-	}
-
-	kdoc.Files = stbom.MergeMaps(kdoc.Files, tfils)
 
 	err = filepath.Walk(input, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -136,7 +129,8 @@ func BuildPackageFromDir(input string, kdoc *k8spdx.Document, kpkg *k8spdx.Packa
 		log.Info().Str("name", info.Name()).
 			Int("size", bufsz).
 			Str("cksum", "SHA256:"+hex.EncodeToString(cksumSHA256[:])).
-			Msg("file entry detected")
+			Str("dir", input).
+			Msg("file entry detected inside dir")
 
 		kfile := k8spdx.NewFile()
 		kfile.SetEntity(
@@ -220,7 +214,8 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package, license string) er
 	tpkgs := map[string]*k8spdx.Package{}
 
 	for _, tpkg := range sdoc.Packages {
-		conv := stbom.ConvertFromSyftPackage(tpkg)
+		conv := stbom.ConvertFromSyftPackage("", tpkg)
+		conv.SetSPDXID(spdxIDPrefix + conv.SPDXID())
 		conv.LicenseDeclared = license
 		tpkgs[conv.SPDXID()] = conv
 
@@ -235,7 +230,9 @@ func BuildPackageFromFile(input string, kpkg *k8spdx.Package, license string) er
 
 	for _, tfil := range sdoc.Files {
 		conv := stbom.ConvertFromSyftFile(tfil)
+		conv.SetSPDXID(spdxIDPrefix + conv.SPDXID())
 		conv.LicenseConcluded = license
+		conv.Name = filepath.Join(filepath.Dir(input), conv.Name)
 		tfils[conv.SPDXID()] = conv
 
 		pfo, err := os.Lstat(conv.Name)
@@ -363,7 +360,7 @@ func BuildPackage(name, author, organization, license,
 				return err
 			}
 		} else {
-			log.Info().Str("file", ipath).Str("package", pkgname).Msg("adding file to package")
+			log.Info().Str("file", ipath).Str("package", pkgname).Msg("adding file to package2")
 
 			if err := BuildPackageFromFile(ipath, kpkg, license); err != nil {
 				return err

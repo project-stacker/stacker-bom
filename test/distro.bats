@@ -12,7 +12,7 @@ function teardown() {
 
 @test "deb bom workflow" {
   # inventory
-  docker run -v ${TOPDIR}/bin:/opt/bin -v ${BOMD}:/stacker-artifacts -i ubuntu:latest /opt/bin/stacker-bom-linux-amd64 inventory -x /proc,/sys,/dev,/tmp,/opt,/var/lib/dpkg/info,/var/log,/var/cache,/var/lib/systemd,/var/lib/dpkg,/var/lib/apt,/var/lib/pam,/var/lib/shells.state,/.dockerenv,/usr/share/info,/usr/sbin/policy-rc.d,/etc,/run,/root,/usr/bin/man,/usr/local/sbin/unminimize,/usr/sbin/initctl,/stacker-artifacts -o /stacker-artifacts/inventory.json
+  docker run -v ${TOPDIR}/bin:/opt/bin -v ${BOMD}:/stacker-artifacts -i ubuntu:latest /opt/bin/stacker-bom-linux-amd64 inventory -x /proc,/sys,/dev,/tmp,/opt,/var/lib/dpkg/info,/var/log,/var/cache,/var/lib/systemd,/var/lib/dpkg,/var/lib/apt,/var/lib/pam,/var/lib/shells.state,/.dockerenv,/usr/share/info,/usr/sbin/policy-rc.d,/etc,/run,/root,/usr/bin/man,/usr/local/sbin/unminimize,/usr/sbin/initctl,/home/ubuntu,/stacker-artifacts -o /stacker-artifacts/inventory.json
   [ -f ${BOMD}/inventory.json ]
   # discover installed packages
   docker run -v ${TOPDIR}/bin:/opt/bin -v ${BOMD}:/stacker-artifacts -i ubuntu:latest /opt/bin/stacker-bom-linux-amd64 discover -o /stacker-artifacts/discover.json
